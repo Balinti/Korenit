@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Fund, PortfolioFund, PortfolioResult, FundReturns } from '@/lib/types';
+import { Fund, PortfolioFund, PortfolioResult } from '@/lib/types';
 import { simulatePortfolio } from '@/lib/calculations';
+import { fetchFundReturns } from '@/lib/datagovil';
 import FundPicker from './FundPicker';
 import AllocationTable from './AllocationTable';
 import ResultsChart from './ResultsChart';
@@ -78,20 +79,14 @@ export default function SimulatorForm() {
       const fromYear = fromDate.getFullYear();
       const fromMonth = String(fromDate.getMonth() + 1).padStart(2, '0');
 
-      const from = `${fromYear}${fromMonth}`;
-      const to = `${toYear}${toMonth}`;
-      const fundIds = portfolioFunds.map(f => f.fund.id).join(',');
+      const fromPeriod = Number(`${fromYear}${fromMonth}`);
+      const toPeriod = Number(`${toYear}${toMonth}`);
+      const fundIds = portfolioFunds.map(f => f.fund.id);
 
-      // Fetch returns from API
-      const res = await fetch(`/api/returns?funds=${fundIds}&from=${from}&to=${to}`);
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'שגיאה בטעינת נתונים');
-      }
+      // Fetch returns directly from data.gov.il (public API with CORS)
+      const fundReturns = await fetchFundReturns(fundIds, fromPeriod, toPeriod);
 
-      const fundReturns: FundReturns[] = await res.json();
-
-      // Inject fund names from our local fund list (GemelNet XML doesn't include names)
+      // Inject fund names from our local fund list
       for (const fr of fundReturns) {
         const pf = portfolioFunds.find(f => f.fund.id === fr.fundId);
         if (pf) fr.fundName = pf.fund.name;
