@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Fund, PortfolioFund, PortfolioResult } from '@/lib/types';
+import { useState, useRef } from 'react';
+import { Fund, PortfolioFund, PortfolioResult, FundReturns } from '@/lib/types';
 import { simulatePortfolio } from '@/lib/calculations';
 import { fetchFundReturns } from '@/lib/datagovil';
 import FundPicker from './FundPicker';
@@ -33,19 +33,43 @@ export default function SimulatorForm() {
   const [error, setError] = useState<string>('');
   const [result, setResult] = useState<PortfolioResult | null>(null);
 
+  // Cache the last fetched fund data so projection changes don't need a new API call
+  const cachedFundData = useRef<{
+    fundReturns: FundReturns[];
+    investmentAmount: number;
+    portfolioAllocations: { fundId: string; allocation: number }[];
+  } | null>(null);
+
+  const invalidateCache = () => {
+    cachedFundData.current = null;
+    setResult(null);
+  };
+
   const handleAddFund = (fund: Fund) => {
     setPortfolioFunds(prev => [...prev, { fund, allocation: 0 }]);
-    setResult(null);
+    invalidateCache();
   };
 
   const handleRemoveFund = (fundId: string) => {
     setPortfolioFunds(prev => prev.filter(f => f.fund.id !== fundId));
-    setResult(null);
+    invalidateCache();
   };
 
   const handleAllocationsChange = (funds: PortfolioFund[]) => {
     setPortfolioFunds(funds);
-    setResult(null);
+    invalidateCache();
+  };
+
+  const handleProjectionChange = (years: number) => {
+    setProjectionYears(years);
+    // If we have cached fund data, instantly re-run the projection without a new API call
+    if (cachedFundData.current) {
+      const { fundReturns, investmentAmount: cachedAmount, portfolioAllocations } = cachedFundData.current;
+      const newResult = simulatePortfolio(cachedAmount, portfolioAllocations, fundReturns, years);
+      setResult(newResult);
+    } else {
+      setResult(null);
+    }
   };
 
   const totalAllocation = portfolioFunds.reduce((sum, f) => sum + f.allocation, 0);
@@ -92,10 +116,15 @@ export default function SimulatorForm() {
         if (pf) fr.fundName = pf.fund.name;
       }
 
+      const portfolioAllocations = portfolioFunds.map(f => ({ fundId: f.fund.id, allocation: f.allocation }));
+
+      // Cache the fetched data so projection changes don't need a new API call
+      cachedFundData.current = { fundReturns, investmentAmount, portfolioAllocations };
+
       // Run simulation client-side
       const simulationResult = simulatePortfolio(
         investmentAmount,
-        portfolioFunds.map(f => ({ fundId: f.fund.id, allocation: f.allocation })),
+        portfolioAllocations,
         fundReturns,
         projectionYears
       );
@@ -120,7 +149,7 @@ export default function SimulatorForm() {
           value={investmentAmount}
           onChange={(e) => {
             setInvestmentAmount(Number(e.target.value));
-            setResult(null);
+            invalidateCache();
           }}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-lg"
           placeholder="100,000"
@@ -152,7 +181,7 @@ export default function SimulatorForm() {
               {LOOKBACK_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
-                  onClick={() => { setLookbackYears(opt.value); setResult(null); }}
+                  onClick={() => { setLookbackYears(opt.value); invalidateCache(); }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     lookbackYears === opt.value
                       ? 'bg-blue-600 text-white'
@@ -170,7 +199,7 @@ export default function SimulatorForm() {
               {PROJECTION_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
-                  onClick={() => { setProjectionYears(opt.value); setResult(null); }}
+                  onClick={() => handleProjectionChange(opt.value)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     projectionYears === opt.value
                       ? 'bg-blue-600 text-white'
