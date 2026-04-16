@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Heebo } from "next/font/google";
+import NavBar from "@/components/NavBar";
 import "./globals.css";
 
 const heebo = Heebo({
@@ -8,8 +9,8 @@ const heebo = Heebo({
 });
 
 export const metadata: Metadata = {
-  title: "קורנית — סימולטור תיק פנסיוני",
-  description: "סימולציה של תיק פנסיוני על בסיס נתוני גמלנט",
+  title: "קורנית — סימולטור פנסיה ומשכנתא",
+  description: "סימולציה של תיק פנסיוני ומחשבון משכנתא ישראלי",
 };
 
 export default function RootLayout({
@@ -19,7 +20,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="he" dir="rtl" className={`${heebo.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-[var(--font-heebo)]">{children}</body>
+      <body className="min-h-full flex flex-col font-[var(--font-heebo)]">
+        <NavBar />
+        {children}
+      </body>
     </html>
   );
 }
