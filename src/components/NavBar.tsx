@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { href: '/', label: 'פנסיה' },
   { href: '/mashkanta', label: 'משכנתא' },
+  { href: '/stocks', label: 'מניות' },
 ];
 
 export default function NavBar() {
