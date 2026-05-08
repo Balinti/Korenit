@@ -133,11 +133,7 @@ export default function StocksPage() {
       setResult(sim);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        setError('לא ניתן לטעון נתוני מסחר כרגע. בדוק חיבור אינטרנט ונסה שנית.');
-      } else {
-        setError(`שגיאה: ${msg}`);
-      }
+      setError(msg.startsWith('א') ? msg : `לא נמצאו נתוני מסחר עבור ${selectedStock?.symbol ?? ''}. ייתכן שהסימול אינו נתמך.`);
     } finally {
       setLoading(false);
     }
